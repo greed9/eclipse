@@ -5,7 +5,7 @@ import os
 import time
 import random
 import pigpio
-
+import argparse
 import picamera
 
 MIN_WIDTH=1000
@@ -26,7 +26,9 @@ class FileMaker( ):
         
     def nextFileName(self):
         filename = self.filename
-        self.fileNumber = self.fileNumber + 1
+        self.fileNumber = int(self.fileNumber) + 1
+        #if (self.fileNumber < 10):
+        #    self.fileNumber = '0' + str(self.fileNumber)
         self.filename = self.baseName + '_' + str( self.fileNumber)
         return filename + '.jpg'
         
@@ -67,24 +69,41 @@ class Servo ( ):
         pi.set_servo_pulsewidth( self.pin, 0 ) # off
 
 def main( ):
-    xAxisGPIOPin = 23 # Check these
-    yAxisGPIOPin = 24 # Check these
-    horizontalPositions = [1250, 1500, 1750]
-    verticalPositions = [1250, 1500, 1750]
+
+    parser = argparse.ArgumentParser(description='Please use -img and -folder')
+    parser.add_argument('-img',dest='images',
+                    help='an integer for the accumulator')
+
+    parser.add_argument('-folder',dest='folder',
+                        help='an integer for the accumulator')
+
+    args = parser.parse_args()
+    
+    
+    xAxisGPIOPin = 24 # Check these
+    yAxisGPIOPin = 23 # Check these
+    #horizontalPositions = [650, 750, 1000, 1200, 1400, 1600, 1800, 2000]
+    #verticalPositions = [1200, 1300, 1400, 1600, 1800, 2000, 2200, 2400]
+    horizontalPositions = [1000, 1200, 1400, 1600, 1800, 2000]
+    verticalPositions = [1400, 1500, 1600, 1700, 1800, 1900]
     horizontal = Servo ( "Xaxis", xAxisGPIOPin, horizontalPositions)
     vertical = Servo ( "Yaxis", yAxisGPIOPin, verticalPositions)
+    
+    horizontal.servoClose()
+    vertical.servoClose()
 
-    folder = FolderMaker('images', 0)
-    file = FileMaker('img', 0)
-    for h in range(3):
-        for v in range(3):
+    folder = FolderMaker(args.folder, 0)
+    file = FileMaker(args.images, 0)
+    for v in range(len(horizontalPositions)):
+        for h in range(len(verticalPositions)):
             horizontal.move(h)
             vertical.move(v)
-            time.sleep(1)
+            time.sleep(2)
             camera.capture(file.nextFileName())
 			
 	
-	
+    horizontal.servoClose()
+    vertical.servoClose()
     # Test horizontal movement
     #print( "Staring X axis test")
     #horizontal.move( 0 )
