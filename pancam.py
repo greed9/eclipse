@@ -7,12 +7,17 @@ import random
 import pigpio
 import argparse
 import picamera
+import datetime
 
 MIN_WIDTH=1000
 MAX_WIDTH=2000
 
 pi = pigpio.pi()
 camera = picamera.PiCamera( )
+
+startSlowTime = datetime.datetime ( 2017, 8, 19, 17, 20, 0 )
+startFastTime = datetime.datetime ( 2017, 8, 19, 17, 25, 0 )
+endFastTime = datetime.datetime ( 2017, 8, 19, 17, 30, 0 )
 
 if not pi.connected:
     exit()
@@ -50,6 +55,7 @@ class FolderMaker ( ):
         if not os.path.isdir(self.currFolderName):
             os.makedirs(self.currFolderName)
         os.chdir (self.currFolderName )
+        return self.currFolderName
             
         
 class Servo ( ):
@@ -84,8 +90,9 @@ def main( ):
     yAxisGPIOPin = 23 # Check these
     #horizontalPositions = [650, 750, 1000, 1200, 1400, 1600, 1800, 2000]
     #verticalPositions = [1200, 1300, 1400, 1600, 1800, 2000, 2200, 2400]
-    horizontalPositions = [1000, 1200, 1400, 1600, 1800, 2000]
-    verticalPositions = [1400, 1500, 1600, 1700, 1800, 1900]
+    #horizontalPositions = [500, 1200, 1400, 1600, 1800, 2500]
+    horizontalPositions = [500, 1000, 1500, 2000, 2500]
+    verticalPositions = [1500, 1700, 1900, 2100, 2300 ]
     horizontal = Servo ( "Xaxis", xAxisGPIOPin, horizontalPositions)
     vertical = Servo ( "Yaxis", yAxisGPIOPin, verticalPositions)
     
@@ -94,13 +101,39 @@ def main( ):
 
     folder = FolderMaker(args.folder, 0)
     file = FileMaker(args.images, 0)
-    for v in range(len(horizontalPositions)):
-        for h in range(len(verticalPositions)):
-            horizontal.move(h)
-            vertical.move(v)
-            time.sleep(2)
-            camera.capture(file.nextFileName())
-			
+
+    delayTime = 10
+    fname = file.nextFileName ( )
+    folderName = folder.nextFolder ( )
+    state = 0
+
+    while True:
+        vertical.move(0)
+        horizontal.move(0)
+
+        rightNow = datetime.datetime.now( )
+        print( str ( rightNow ) )
+
+        if rightNow > startSlowTime:
+            if state == 0:
+                folderName = folder.nextFolder ( )
+                state = 1
+            delayTime = 120
+            print( folderName + "/" + fname )
+        if rightNow > startFastTime and rightNow < endFastTime:
+            delayTime = 5
+            print( folderName + "/" + fname)
+
+        if state == 1:
+            for v in range(len(verticalPositions)):
+                for h in range(len(horizontalPositions)):
+                    horizontal.move(h)
+                    time.sleep(2)
+                    fname = file.nextFileName ( )
+                    camera.capture(fname)
+                vertical.move(v)
+            folderName = folder.nextFolder ( )			
+        time.sleep( delayTime )
 	
     horizontal.servoClose()
     vertical.servoClose()
